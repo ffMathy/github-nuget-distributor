@@ -10,6 +10,7 @@ namespace GithubNugetDistributor
     {
         static void Main(string[] args)
         {
+            
         }
     }
 }
