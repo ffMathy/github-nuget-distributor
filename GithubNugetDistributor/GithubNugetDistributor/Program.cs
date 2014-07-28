@@ -132,77 +132,82 @@ namespace GithubNugetDistributor
                 //create a subdirectory for all repositories.
                 if (!TryCreateDirectory(clonePath)) return;
 
+                Console.WriteLine();
                 Console.WriteLine("Cloning " + repository.CloneUrl + " ...");
                 
                 //run a git clone on the repository into the clone path.
                 RunCommandLine("git", "clone " + repository.CloneUrl + " \"" + clonePath + "\"");
-
-                //whether or not this project should be turned into a nuget package.
-                var assemblyInformationPath = string.Empty;
-                var included = false;
 
                 //remove items that should never be included in a package, and check wether or not this is a real C# project.
                 var files = Directory.GetFiles(clonePath, "*", SearchOption.AllDirectories);
                 foreach (var file in files)
                 {
 
-                    var fileName = Path.GetFileName(file);
                     var fileExtension = Path.GetExtension(file);
-                    var directoryName = Path.GetFileName(Path.GetDirectoryName(file));
-
-                    if (fileExtension.Equals(".csproj", StringComparison.OrdinalIgnoreCase))
+                    if (fileExtension.Equals(".csproj", StringComparison.OrdinalIgnoreCase) || fileExtension.Equals(".vbproj", StringComparison.OrdinalIgnoreCase))
                     {
-                        //is this a C# project? if so, count this project in.
-                        included = true;
+
+                        //get directory structure information.
+                        var projectFileName = Path.GetFileName(file);
+                        var projectFileNameWithoutExtension = Path.GetFileNameWithoutExtension(file);
+                        var projectDirectoryPath = Path.GetDirectoryName(file);
+                        var projectDirectoryName = Path.GetFileName(projectDirectoryPath);
+
+                        //is this a C# or VB project? if so, count this project in.
+                        Console.WriteLine(" - Project found.");
+
+                        //compile the project.
+                        Console.WriteLine(" - Compiling project ...");
+
+                        //first we need to find the latest msbuild file.
+                        var frameworkDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Microsoft.NET", "Framework" + (Environment.Is64BitOperatingSystem ? "64" : ""));
+
+                        //get the latest framework version folder. all the framework folders are in the format "vX.X.X" where X.X.X is what we are looking for (the version number).
+                        var frameworkFolders = Directory.GetDirectories(frameworkDirectory, "*", SearchOption.TopDirectoryOnly)
+                            .Select(d => new DirectoryInfo(d));
+
+                        var frameworkVersions = frameworkFolders
+                            .Where(f => f.Name.StartsWith("v"))
+                            .Select(f => f.Name.Substring(1))
+                            .Select(f => f.Split('.'));
+
+                        var latestFrameworkVersion = frameworkVersions
+                            .OrderByDescending(v => v.Length > 0 ? v[0] : "0")
+                            .ThenByDescending(v => v.Length > 1 ? v[1] : "0")
+                            .ThenByDescending(v => v.Length > 2 ? v[2] : "0")
+                            .First()
+                            .Aggregate("v", (a, b) => a + "." + b);
+
+                        //now we know the MSBuild path of the latest version of the .net framework.
+                        var msbuildPath = Path.Combine(frameworkDirectory, latestFrameworkVersion + "", "msbuild");
+
+                        //and finally now use msbuild to compile.
+                        RunCommandLine(msbuildPath, "\"" + file + "\"");
+
+                        //create a nuget package.
+                        Console.WriteLine(" - Creating NuGet package " + projectFileName + " ...");
+
+                        //fetch a list of the user's commits.
+                        var commits = await githubClient.Repository.Commits.GetAll(user.Login, repository.Name);
+
+                        //set the package version number to be the amount of commits.
+                        var version = commits.Count;
+
+                        //fetch a brand new nuspec file from the template.
+                        var nuspecFileContents = string.Format(Resources.NuGetPackage, repository.Name, version, user.Name ?? user.Login, repository.Description, DateTime.UtcNow.Year);
+
+                        //get file path for the new nuspec file.
+                        var nuspecFilePath = Path.Combine(projectDirectoryPath, projectFileNameWithoutExtension + ".nuspec");
+
+                        //write the nuspec file.
+                        File.WriteAllText(nuspecFilePath, nuspecFileContents);
+
+                        //create the nuget package.
+                        RunCommandLine("nuget", "pack \"" + file + "\" -IncludeReferencedProjects");
+
+                        //push the nuget package.
+                        RunCommandLine("nuget", "push " + repository.Name + ".1.0." + version + ".nupkg");
                     }
-                    else if (fileExtension.Equals(".cs", StringComparison.OrdinalIgnoreCase))
-                    {
-                        //is it a .cs file instead? see if it is the assembly info file which should not be included.
-                        if (fileName.Equals("AssemblyInfo.cs") && directoryName.Equals("Properties"))
-                        {
-                            assemblyInformationPath = file;
-                        }
-                    }
-                    
-                    //see if this is a type of file that should be deleted, and delete it instantly.
-                    var deletedFileExtensions = new[] { ".csproj", ".gitignore", ".sln" };
-                    if(deletedFileExtensions.Contains(fileExtension)) {
-                        File.Delete(file);
-                    }
-
-                }
-
-                //was it a proper project to include in a package?
-                if (included)
-                {
-
-                    Console.WriteLine("C# project found, creating NuGet package of " + repository.Name + ".");
-
-                    //delete the assembly information file.
-                    if(!string.IsNullOrEmpty(assemblyInformationPath)) {
-                        File.Delete(assemblyInformationPath);
-                    }
-
-                    //fetch a list of the user's commits.
-                    var commits = await githubClient.Repository.Commits.GetAll(user.Login, repository.Name);
-
-                    //fetch version number.
-                    var version = commits.Count;
-
-                    //fetch a brand new nuspec file from the template.
-                    var nuspecFileContents = string.Format(Resources.NuGetPackage, repository.Name, version, user.Name ?? user.Login, repository.Description, DateTime.UtcNow.Year);
-
-                    //get file path for the new nuspec file.
-                    var nuspecFilePath = Path.Combine(packagePath, "Package.nuspec");
-
-                    //write the nuspec file.
-                    File.WriteAllText(nuspecFilePath, nuspecFileContents);
-
-                    //create the nuget package.
-                    RunCommandLine("nuget", "pack \"" + nuspecFilePath + "\"");
-
-                    //push the nuget package.
-                    RunCommandLine("nuget", "push " + repository.Name + ".1.0." + version + ".nupkg");
 
                 }
 
