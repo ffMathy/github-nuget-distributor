@@ -7,6 +7,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace GithubNugetDistributor
@@ -15,6 +16,7 @@ namespace GithubNugetDistributor
     {
         static void Main(string[] args)
         {
+
             var task = Run(args);
             task.Wait();
 
@@ -118,7 +120,7 @@ namespace GithubNugetDistributor
                 return;
             }
 
-            Console.WriteLine("Fetching repositories ...");
+            Console.WriteLine("Cloning repositories ...");
 
             //go through every repository.
             var repositories = await githubClient.Repository.GetAllForUser(user.Login);
@@ -146,7 +148,7 @@ namespace GithubNugetDistributor
 
                     var fileName = Path.GetFileName(file);
                     var fileExtension = Path.GetExtension(file);
-                    var directoryName = Path.GetDirectoryName(file);
+                    var directoryName = Path.GetFileName(Path.GetDirectoryName(file));
 
                     if (fileExtension.Equals(".csproj", StringComparison.OrdinalIgnoreCase))
                     {
@@ -174,16 +176,21 @@ namespace GithubNugetDistributor
                 if (included)
                 {
 
+                    Console.WriteLine("C# project found, creating NuGet package of " + repository.Name + ".");
+
                     //delete the assembly information file.
                     if(!string.IsNullOrEmpty(assemblyInformationPath)) {
                         File.Delete(assemblyInformationPath);
                     }
 
-                    //copy a new specification file over.
-                    var version = repository.PushedAt.HasValue ? repository.PushedAt.Value.UtcTicks / 10000000 : 0;
+                    //fetch a list of the user's commits.
+                    var commits = await githubClient.Repository.Commits.GetAll(user.Login, repository.Name);
+
+                    //fetch version number.
+                    var version = commits.Count;
 
                     //fetch a brand new nuspec file from the template.
-                    var nuspecFileContents = string.Format(Resources.NuGetPackage, repository.Name, version, user.Name ?? user.Login, false, repository.Description, DateTime.UtcNow.Year);
+                    var nuspecFileContents = string.Format(Resources.NuGetPackage, repository.Name, version, user.Name ?? user.Login, repository.Description, DateTime.UtcNow.Year);
 
                     //get file path for the new nuspec file.
                     var nuspecFilePath = Path.Combine(packagePath, "Package.nuspec");
@@ -193,6 +200,9 @@ namespace GithubNugetDistributor
 
                     //create the nuget package.
                     RunCommandLine("nuget", "pack \"" + nuspecFilePath + "\"");
+
+                    //push the nuget package.
+                    RunCommandLine("nuget", "push " + repository.Name + ".1.0." + version + ".nupkg");
 
                 }
 

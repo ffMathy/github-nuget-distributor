@@ -5,10 +5,10 @@
     <version>1.0.{1}</version>
     <authors>{2}</authors>
     <owners>{2}</owners>
-    <requireLicenseAcceptance>{3}</requireLicenseAcceptance>
-    <description>{4}</description>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>{3}</description>
     <releaseNotes></releaseNotes>
-    <copyright>Copyright {5}</copyright>
+    <copyright>Copyright {4}</copyright>
     <tags></tags>
   </metadata>
 </package>
