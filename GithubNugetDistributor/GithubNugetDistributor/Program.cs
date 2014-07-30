@@ -89,7 +89,7 @@ namespace GithubNugetDistributor
             }
 
             //check parameters.
-            if (string.IsNullOrEmpty(nugetApiKey) ||string.IsNullOrEmpty(githubUsername))
+            if (string.IsNullOrEmpty(nugetApiKey) || string.IsNullOrEmpty(githubUsername))
             {
                 Console.Error.WriteLine("Some required arguments are missing.");
 
@@ -134,7 +134,7 @@ namespace GithubNugetDistributor
 
                 Console.WriteLine();
                 Console.WriteLine("Cloning " + repository.CloneUrl + " ...");
-                
+
                 //run a git clone on the repository into the clone path.
                 RunCommandLine("git", "clone " + repository.CloneUrl + " \"" + clonePath + "\"");
 
@@ -171,12 +171,12 @@ namespace GithubNugetDistributor
                             .Select(f => f.Name.Substring(1))
                             .Select(f => f.Split('.'));
 
-                        var latestFrameworkVersion = frameworkVersions
+                        var latestFrameworkVersion = "v" + frameworkVersions
                             .OrderByDescending(v => v.Length > 0 ? v[0] : "0")
                             .ThenByDescending(v => v.Length > 1 ? v[1] : "0")
                             .ThenByDescending(v => v.Length > 2 ? v[2] : "0")
                             .First()
-                            .Aggregate("v", (a, b) => a + "." + b);
+                            .Aggregate((a, b) => a + "." + b);
 
                         //now we know the MSBuild path of the latest version of the .net framework.
                         var msbuildPath = Path.Combine(frameworkDirectory, latestFrameworkVersion + "", "msbuild");
