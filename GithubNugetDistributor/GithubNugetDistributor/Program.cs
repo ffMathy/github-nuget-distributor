@@ -194,7 +194,7 @@ namespace GithubNugetDistributor
                         var version = commits.Count;
 
                         //fetch a brand new nuspec file from the template.
-                        var nuspecFileContents = string.Format(Resources.NuGetPackage, repository.Name, version, user.Name ?? user.Login, repository.Description, DateTime.UtcNow.Year, repository.Url);
+                        var nuspecFileContents = string.Format(Resources.NuGetPackage, repository.Name, version, user.Name ?? user.Login, repository.Description, DateTime.UtcNow.Year, repository.HtmlUrl);
 
                         //get file path for the new nuspec file.
                         var nuspecFilePath = Path.Combine(projectDirectoryPath, projectFileNameWithoutExtension + ".nuspec");
