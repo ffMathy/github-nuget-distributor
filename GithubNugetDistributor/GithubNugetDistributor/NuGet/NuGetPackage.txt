@@ -9,6 +9,6 @@
     <description>{3}</description>
     <releaseNotes></releaseNotes>
     <copyright>Copyright {4}</copyright>
-    <tags></tags>
+	<projectUrl>{5}</projectUrl>
   </metadata>
 </package>
