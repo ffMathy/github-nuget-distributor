@@ -20,25 +20,6 @@ namespace GithubNugetDistributor
         static void Main(string[] args)
         {
 
-            if (!IsAdministrator())
-            {
-                var assembly = Assembly.GetExecutingAssembly();
-                var directory = assembly.Location;
-
-                //run as administrator.
-                var information = new ProcessStartInfo(directory);
-                information.Verb = "runas";
-
-                foreach (var argument in args)
-                {
-                    information.Arguments += argument + " ";
-                }
-
-                using (Process.Start(information)) { }
-
-                return;
-            }
-
             var task = Run(args);
             task.Wait();
 
@@ -50,13 +31,6 @@ namespace GithubNugetDistributor
 
                 Console.ReadLine();
             }
-        }
-
-        private static bool IsAdministrator()
-        {
-            var identity = WindowsIdentity.GetCurrent();
-            var principal = new WindowsPrincipal(identity);
-            return principal.IsInRole(WindowsBuiltInRole.Administrator);
         }
 
         private static async Task Run(string[] args)
