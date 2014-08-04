@@ -9,6 +9,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Octokit.Internal;
 
 namespace GithubNugetDistributor
 {
@@ -53,16 +54,22 @@ namespace GithubNugetDistributor
             //display the help page if needed.
             var helpArguments = new[] { "help", "h", "?" };
             var githubUsernameArguments = new[] { "user", "u" };
+            var githubPasswordArguments = new[] { "password", "p" };
             var nugetApiKeyArguments = new[] { "apikey", "api", "a", "key", "k" };
 
             //these values are given as arguments.
             var githubUsername = string.Empty;
+            var githubPassword = string.Empty;
             var nugetApiKey = string.Empty;
 
-            //for testing purposes, if there is a nuget.apikey file, load the key from there per default to make it all easier.
+            //for testing purposes, if there are files for credentials and keys, load the key from there per default to make it all easier.
             if (File.Exists("nuget.apikey"))
             {
                 nugetApiKey = File.ReadAllText("nuget.apikey");
+            }
+            if (File.Exists("github.password"))
+            {
+                githubPassword = File.ReadAllText("github.password");
             }
 
             //go through all arguments and set values as needed.
@@ -80,6 +87,10 @@ namespace GithubNugetDistributor
                 else if (githubUsernameArguments.Contains(normalizedArguments[i]) && !isLastArgument)
                 {
                     githubUsername = args[++i];
+                }
+                else if (githubPasswordArguments.Contains(normalizedArguments[i]) && !isLastArgument)
+                {
+                    githubPassword = args[++i];
                 }
                 else if (nugetApiKeyArguments.Contains(normalizedArguments[i]) && !isLastArgument)
                 {
@@ -110,7 +121,17 @@ namespace GithubNugetDistributor
 
             //instantiate github api wrapper.
             var product = new ProductHeaderValue("GithubNugetDistributor");
-            var githubClient = new GitHubClient(product);
+
+            GitHubClient githubClient;
+            if (!string.IsNullOrEmpty(githubPassword))
+            {
+                githubClient = new GitHubClient(product,
+                    new InMemoryCredentialStore(new Credentials(githubUsername, githubPassword)));
+            }
+            else
+            {
+                githubClient = new GitHubClient(product);
+            }
 
             //now let's sign in to github and make sure that the username is correct.
             var user = await githubClient.User.Get(githubUsername);
@@ -260,7 +281,11 @@ namespace GithubNugetDistributor
         {
             using (var process = Process.GetCurrentProcess())
             {
-                Console.WriteLine("Usage: " + process.ProcessName + ".exe -user <GitHub username> -apikey <nuget API key> [additional arguments]");
+                Console.WriteLine("Usage:");
+                Console.WriteLine("\t" + process.ProcessName + ".exe -user <GitHub username> -apikey <nuget API key> [-password <GitHub password>]");
+                Console.WriteLine();
+                Console.WriteLine("Note: Authenticating with a GitHub password may be nescessary to get additional API requests.");
+
             }
         }
     }
