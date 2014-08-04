@@ -219,6 +219,7 @@ namespace GithubNugetDistributor
                         var nuspecFileContents = string.Format(Resources.NuGetPackage, packageName, version, user.Name ?? user.Login, repository.Description, DateTime.UtcNow.Year, repository.HtmlUrl);
 
                         //get file path for the new nuspec file.
+                        Debug.Assert(projectDirectoryPath != null, "projectDirectoryPath != null");
                         var nuspecFilePath = Path.Combine(projectDirectoryPath, packageName + ".nuspec");
 
                         //write the nuspec file.
@@ -228,7 +229,7 @@ namespace GithubNugetDistributor
                         RunCommandLine("nuget", "pack \"" + file + "\" -IncludeReferencedProjects");
 
                         //push the nuget package.
-                        RunCommandLine("nuget", "push " + repository.Name + ".1.0." + version + ".nupkg");
+                        RunCommandLine("nuget", "push " + packageName + ".1.0." + version + ".nupkg");
                     }
 
                 }
