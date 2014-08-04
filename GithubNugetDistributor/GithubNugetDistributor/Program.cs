@@ -144,14 +144,14 @@ namespace GithubNugetDistributor
                 {
 
                     var fileExtension = Path.GetExtension(file);
+                    Debug.Assert(fileExtension != null, "fileExtension != null");
+
                     if (fileExtension.Equals(".csproj", StringComparison.OrdinalIgnoreCase) || fileExtension.Equals(".vbproj", StringComparison.OrdinalIgnoreCase))
                     {
 
                         //get directory structure information.
-                        var projectFileName = Path.GetFileName(file);
                         var projectFileNameWithoutExtension = Path.GetFileNameWithoutExtension(file);
                         var projectDirectoryPath = Path.GetDirectoryName(file);
-                        var projectDirectoryName = Path.GetFileName(projectDirectoryPath);
 
                         //is this a C# or VB project? if so, count this project in.
                         Console.WriteLine(" - Project found.");
@@ -185,7 +185,7 @@ namespace GithubNugetDistributor
                         RunCommandLine(msbuildPath, "\"" + file + "\"");
 
                         //create a nuget package.
-                        Console.WriteLine(" - Creating NuGet package " + projectFileName + " ...");
+                        Console.WriteLine(" - Creating NuGet package " + repository.Name + "." + projectFileNameWithoutExtension + " ...");
 
                         //fetch a list of the user's commits.
                         var commits = await githubClient.Repository.Commits.GetAll(user.Login, repository.Name);
@@ -194,7 +194,7 @@ namespace GithubNugetDistributor
                         var version = commits.Count;
 
                         //fetch a brand new nuspec file from the template.
-                        var nuspecFileContents = string.Format(Resources.NuGetPackage, repository.Name, version, user.Name ?? user.Login, repository.Description, DateTime.UtcNow.Year, repository.HtmlUrl);
+                        var nuspecFileContents = string.Format(Resources.NuGetPackage, repository.Name + "." + projectFileNameWithoutExtension, version, user.Name ?? user.Login, repository.Description, DateTime.UtcNow.Year, repository.HtmlUrl);
 
                         //get file path for the new nuspec file.
                         var nuspecFilePath = Path.Combine(projectDirectoryPath, projectFileNameWithoutExtension + ".nuspec");
