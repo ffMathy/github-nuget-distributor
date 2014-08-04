@@ -1,4 +1,6 @@
 ﻿
+using System.Reflection;
+using System.Security.Principal;
 using GithubNugetDistributor.Properties;
 using Octokit;
 using System;
@@ -18,6 +20,25 @@ namespace GithubNugetDistributor
         static void Main(string[] args)
         {
 
+            if (!IsAdministrator())
+            {
+                var assembly = Assembly.GetExecutingAssembly();
+                var directory = assembly.Location;
+
+                //run as administrator.
+                var information = new ProcessStartInfo(directory);
+                information.Verb = "runas";
+
+                foreach (var argument in args)
+                {
+                    information.Arguments += argument + " ";
+                }
+
+                using (Process.Start(information)) { }
+
+                return;
+            }
+
             var task = Run(args);
             task.Wait();
 
@@ -31,8 +52,19 @@ namespace GithubNugetDistributor
             }
         }
 
+        private static bool IsAdministrator()
+        {
+            var identity = WindowsIdentity.GetCurrent();
+            var principal = new WindowsPrincipal(identity);
+            return principal.IsInRole(WindowsBuiltInRole.Administrator);
+        }
+
         private static async Task Run(string[] args)
         {
+            Console.ForegroundColor = ConsoleColor.White;
+
+            Console.Clear();
+
             Console.WriteLine("This program allows you to (given a Github username) fetch all the projects from that user and automatically package them as NuGet packages, and upload them too. Make sure you have Git installed before you continue.");
             Console.WriteLine();
 
@@ -114,10 +146,10 @@ namespace GithubNugetDistributor
             File.WriteAllBytes("nuget.exe", Resources.NuGet);
 
             //auto-update nuget.
-            RunCommandLine("nuget", "update -self");
+            RunCommandLine("nuget", "update -self", false);
 
             //set the api key.
-            RunCommandLine("nuget", "setApiKey " + nugetApiKey);
+            RunCommandLine("nuget", "setApiKey " + nugetApiKey, false);
 
             //instantiate github api wrapper.
             var product = new ProductHeaderValue("GithubNugetDistributor");
@@ -157,7 +189,7 @@ namespace GithubNugetDistributor
                 Console.WriteLine("Cloning " + repository.CloneUrl + " ...");
 
                 //run a git clone on the repository into the clone path.
-                RunCommandLine("git", "clone " + repository.CloneUrl + " \"" + clonePath + "\"");
+                RunCommandLine("git", "clone " + repository.CloneUrl + " \"" + clonePath + "\"", true);
 
                 //remove items that should never be included in a package, and check wether or not this is a real C# project.
                 var files = Directory.GetFiles(clonePath, "*", SearchOption.AllDirectories);
@@ -203,7 +235,7 @@ namespace GithubNugetDistributor
                         var msbuildPath = Path.Combine(frameworkDirectory, latestFrameworkVersion + "", "msbuild");
 
                         //and finally now use msbuild to compile.
-                        RunCommandLine(msbuildPath, "\"" + file + "\"");
+                        RunCommandLine(msbuildPath, "\"" + file + "\"", false);
 
                         //create a nuget package.
                         var packageName = repository.Name + "." + projectFileNameWithoutExtension;
@@ -220,17 +252,17 @@ namespace GithubNugetDistributor
 
                         //get file path for the new nuspec file.
                         Debug.Assert(projectDirectoryPath != null, "projectDirectoryPath != null");
-                        var nuspecFilePath = Path.Combine(projectDirectoryPath, packageName + ".nuspec");
+                        var nuspecFilePath = Path.Combine(projectDirectoryPath, projectFileNameWithoutExtension + ".nuspec");
 
                         //write the nuspec file.
                         File.WriteAllText(nuspecFilePath, nuspecFileContents);
 
                         //create the nuget package.
-                        RunCommandLine("nuget", "pack \"" + file + "\" -IncludeReferencedProjects -OutputDirectory \"" + packagePath + "\"");
+                        RunCommandLine("nuget", "pack \"" + file + "\" -IncludeReferencedProjects -OutputDirectory \"" + packagePath + "\"", true);
 
                         //push the nuget package.
                         var packageFilePath = Path.Combine(packagePath, packageName + ".1.0." + version + ".nupkg");
-                        RunCommandLine("nuget", "push \"" + packageFilePath + "\"");
+                        RunCommandLine("nuget", "push \"" + packageFilePath + "\"", true);
                     }
 
                 }
@@ -268,16 +300,47 @@ namespace GithubNugetDistributor
             return false;
         }
 
-        private static void RunCommandLine(string command, string arguments)
+        private static void RunCommandLine(string command, string arguments, bool redirectOutput)
         {
             var information = new ProcessStartInfo(command);
             information.Arguments = arguments;
             information.WorkingDirectory = Environment.CurrentDirectory;
 
+            information.RedirectStandardError = redirectOutput;
+            information.RedirectStandardOutput = redirectOutput;
+
+            information.CreateNoWindow = redirectOutput;
+            information.UseShellExecute = !redirectOutput;
+
             using (var process = Process.Start(information))
             {
+                if (process == null) return;
+
+                if (redirectOutput)
+                {
+                    process.ErrorDataReceived += process_ErrorDataReceived;
+                    process.OutputDataReceived += process_OutputDataReceived;
+
+                    process.BeginErrorReadLine();
+                    process.BeginOutputReadLine();
+                }
+
                 process.WaitForExit();
             }
+        }
+
+        static void process_OutputDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            Console.ForegroundColor = ConsoleColor.Blue;
+            Console.WriteLine(e.Data);
+            Console.ForegroundColor = ConsoleColor.White;
+        }
+
+        static void process_ErrorDataReceived(object sender, DataReceivedEventArgs e)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine(e.Data);
+            Console.ForegroundColor = ConsoleColor.White;
         }
 
         private static void DisplayHelp()
