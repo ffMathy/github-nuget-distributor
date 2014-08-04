@@ -206,7 +206,8 @@ namespace GithubNugetDistributor
                         RunCommandLine(msbuildPath, "\"" + file + "\"");
 
                         //create a nuget package.
-                        Console.WriteLine(" - Creating NuGet package " + repository.Name + "." + projectFileNameWithoutExtension + " ...");
+                        var packageName = repository.Name + "." + projectFileNameWithoutExtension;
+                        Console.WriteLine(" - Creating NuGet package " + packageName + " ...");
 
                         //fetch a list of the user's commits.
                         var commits = await githubClient.Repository.Commits.GetAll(user.Login, repository.Name);
@@ -215,10 +216,10 @@ namespace GithubNugetDistributor
                         var version = commits.Count;
 
                         //fetch a brand new nuspec file from the template.
-                        var nuspecFileContents = string.Format(Resources.NuGetPackage, repository.Name + "." + projectFileNameWithoutExtension, version, user.Name ?? user.Login, repository.Description, DateTime.UtcNow.Year, repository.HtmlUrl);
+                        var nuspecFileContents = string.Format(Resources.NuGetPackage, packageName, version, user.Name ?? user.Login, repository.Description, DateTime.UtcNow.Year, repository.HtmlUrl);
 
                         //get file path for the new nuspec file.
-                        var nuspecFilePath = Path.Combine(projectDirectoryPath, projectFileNameWithoutExtension + ".nuspec");
+                        var nuspecFilePath = Path.Combine(projectDirectoryPath, packageName + ".nuspec");
 
                         //write the nuspec file.
                         File.WriteAllText(nuspecFilePath, nuspecFileContents);
