@@ -226,10 +226,11 @@ namespace GithubNugetDistributor
                         File.WriteAllText(nuspecFilePath, nuspecFileContents);
 
                         //create the nuget package.
-                        RunCommandLine("nuget", "pack \"" + file + "\" -IncludeReferencedProjects");
+                        RunCommandLine("nuget", "pack \"" + file + "\" -IncludeReferencedProjects -OutputDirectory \"" + packagePath + "\"");
 
                         //push the nuget package.
-                        RunCommandLine("nuget", "push " + packageName + ".1.0." + version + ".nupkg");
+                        var packageFilePath = Path.Combine(packagePath, packageName + ".1.0." + version + ".nupkg");
+                        RunCommandLine("nuget", "push \"" + packageFilePath + "\"");
                     }
 
                 }

@@ -168,5 +168,6 @@ UpgradeLog*.htm
 # Microsoft Fakes
 FakesAssemblies/
 
-# API key files for testing
+# For testing
 *.apikey
+*.password
