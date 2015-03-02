@@ -35,7 +35,7 @@ namespace GithubNugetDistributor
 
         private static string SanitizeProjectName(string input)
         {
-            if(input.Contains("."))
+            if (input.Contains("."))
             {
                 input = input.Split('.')[0];
             }
@@ -176,6 +176,19 @@ namespace GithubNugetDistributor
 
                 //remove items that should never be included in a package, and check wether or not this is a real C# project.
                 var files = Directory.GetFiles(clonePath, "*", SearchOption.AllDirectories);
+                foreach (var file in files)
+                {
+
+                    var fileExtension = Path.GetExtension(file);
+                    Debug.Assert(fileExtension != null, "fileExtension != null");
+
+                    if (fileExtension.Equals(".sln", StringComparison.OrdinalIgnoreCase))
+                    {
+                        //create the nuget package.
+                        RunCommandLine("nuget", "restore \"" + file + "\"", true);
+                    }
+                }
+
                 foreach (var file in files)
                 {
 
