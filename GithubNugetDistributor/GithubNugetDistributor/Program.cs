@@ -209,7 +209,7 @@ namespace GithubNugetDistributor
                         var msbuildPath = Path.Combine(frameworkDirectory, latestFrameworkVersion + "", "msbuild");
 
                         //and finally now use msbuild to compile.
-                        RunCommandLine(msbuildPath, "\"" + file + "\"", false);
+                        RunCommandLine(msbuildPath, "\"" + file + "\"", true);
 
                         //create a nuget package.
                         var packageName = repository.Name + "." + projectFileNameWithoutExtension;
