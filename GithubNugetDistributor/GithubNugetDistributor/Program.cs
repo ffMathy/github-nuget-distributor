@@ -156,6 +156,9 @@ namespace GithubNugetDistributor
                 return;
             }
 
+            //creating log directory.
+            TryCreateDirectory("Logs");
+
             Console.WriteLine("Cloning repositories ...");
 
             //go through every repository.
@@ -245,7 +248,7 @@ namespace GithubNugetDistributor
                         var msbuildPath = Path.Combine(frameworkDirectory, latestFrameworkVersion + "", "msbuild");
 
                         //and finally now use msbuild to compile.
-                        RunCommandLine(msbuildPath, "\"" + file + "\" /fl /flp:logfile=BuildOutput" + packageName + ".log;verbosity=diagnostic", false);
+                        RunCommandLine(msbuildPath, "\"" + file + "\" /fl /flp:logfile=\"Logs\\BuildOutput-" + packageName + ".log\";verbosity=diagnostic", false);
 
                         //create a nuget package.
                         Console.WriteLine(" - Creating NuGet package " + packageName + " ...");
@@ -280,30 +283,30 @@ namespace GithubNugetDistributor
 
         }
 
-        private static bool TryCreateDirectory(string clonePath)
+        private static bool TryCreateDirectory(string path)
         {
             try
             {
-                if (Directory.Exists(clonePath))
+                if (Directory.Exists(path))
                 {
-                    Directory.Delete(clonePath, true);
+                    Directory.Delete(path, true);
                 }
 
-                Directory.CreateDirectory(clonePath);
+                Directory.CreateDirectory(path);
 
                 return true;
             }
             catch (UnauthorizedAccessException)
             {
-                Console.Error.WriteLine("Could not create or delete the '" + clonePath + "' subfolder since access was denied. Are you trying to run the program from a User Account Control protected folder?");
+                Console.Error.WriteLine("Could not create or delete the '" + path + "' subfolder since access was denied. Are you trying to run the program from a User Account Control protected folder?");
             }
             catch (PathTooLongException)
             {
-                Console.Error.WriteLine("Could not create or delete the '" + clonePath + "' subfolder since the path was too long.");
+                Console.Error.WriteLine("Could not create or delete the '" + path + "' subfolder since the path was too long.");
             }
             catch (Exception ex)
             {
-                Console.Error.WriteLine("Could not create or delete the '" + clonePath + "' due to an unknown reason. " + ex.Message);
+                Console.Error.WriteLine("Could not create or delete the '" + path + "' due to an unknown reason. " + ex.Message);
             }
 
             return false;
