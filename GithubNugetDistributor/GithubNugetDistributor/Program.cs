@@ -33,6 +33,15 @@ namespace GithubNugetDistributor
             }
         }
 
+        private static string SanitizeProjectName(string input)
+        {
+            if(input.Contains("."))
+            {
+                input = input.Split('.')[0];
+            }
+            return input.ToLower().Replace(".", "").Replace("-", "").Replace(" ", "");
+        }
+
         private static async Task Run(string[] args)
         {
             Console.ForegroundColor = ConsoleColor.White;
@@ -205,14 +214,27 @@ namespace GithubNugetDistributor
                             .First()
                             .Aggregate((a, b) => a + "." + b);
 
+                        //get the package information for later.
+                        var sanitizedRepositoryName = SanitizeProjectName(repository.Name);
+                        var sanitizedProjectFileName = SanitizeProjectName(projectFileNameWithoutExtension);
+
+                        string packageName;
+                        if (sanitizedProjectFileName.StartsWith(sanitizedRepositoryName) || sanitizedRepositoryName.StartsWith(sanitizedProjectFileName))
+                        {
+                            packageName = projectFileNameWithoutExtension;
+                        }
+                        else
+                        {
+                            packageName = repository.Name + "." + projectFileNameWithoutExtension;
+                        }
+
                         //now we know the MSBuild path of the latest version of the .net framework.
                         var msbuildPath = Path.Combine(frameworkDirectory, latestFrameworkVersion + "", "msbuild");
 
                         //and finally now use msbuild to compile.
-                        RunCommandLine(msbuildPath, "\"" + file + "\"", true);
+                        RunCommandLine(msbuildPath, "\"" + file + "\" /t:go /fl /flp:logfile=BuildOutput" + packageName + ".log;verbosity=diagnostic", false);
 
                         //create a nuget package.
-                        var packageName = repository.Name + "." + projectFileNameWithoutExtension;
                         Console.WriteLine(" - Creating NuGet package " + packageName + " ...");
 
                         //fetch a list of the user's commits.
