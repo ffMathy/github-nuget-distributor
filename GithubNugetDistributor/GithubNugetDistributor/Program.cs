@@ -318,6 +318,8 @@ namespace GithubNugetDistributor
 
         private static void RunCommandLine(string command, string arguments, bool redirectOutput)
         {
+            Console.WriteLine("Invoking " + command);
+
             var information = new ProcessStartInfo(command);
             information.Arguments = arguments;
             information.WorkingDirectory = Environment.CurrentDirectory;
