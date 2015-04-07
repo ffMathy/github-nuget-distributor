@@ -225,12 +225,11 @@ namespace GithubNugetDistributor
                                 double number;
                                 return double.TryParse(f.Name, NumberStyles.Any, new CultureInfo("en-US"), out number);
                             })
-                            .Select(f => f.Name.Substring(1))
-                            .Select(f => f.Split('.'));
+                            .Select(f => f.Name.Split('.'));
 
                         var latestMsBuildVersion = msBuildVersions
-                            .OrderByDescending(v => v.Length > 0 ? int.Parse(v[0]) : 0)
-                            .ThenByDescending(v => v.Length > 1 ? int.Parse(v[1]) : 0)
+                            .OrderByDescending(v => v.Length > 0 ? int.Parse("0" + v[0]) : 0)
+                            .ThenByDescending(v => v.Length > 1 ? int.Parse("0" + v[1]) : 0)
                             .First()
                             .Aggregate((a, b) => a + "." + b);
 
