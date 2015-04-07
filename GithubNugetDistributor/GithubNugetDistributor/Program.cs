@@ -229,8 +229,8 @@ namespace GithubNugetDistributor
                             .Select(f => f.Split('.'));
 
                         var latestMsBuildVersion = msBuildVersions
-                            .OrderByDescending(v => v.Length > 0 ? v[0] : "0")
-                            .ThenByDescending(v => v.Length > 1 ? v[1] : "0")
+                            .OrderByDescending(v => v.Length > 0 ? int.Parse(v[0]) : 0)
+                            .ThenByDescending(v => v.Length > 1 ? int.Parse(v[1]) : 0)
                             .First()
                             .Aggregate((a, b) => a + "." + b);
 
