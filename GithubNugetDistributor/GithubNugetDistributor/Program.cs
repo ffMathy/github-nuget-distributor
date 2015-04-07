@@ -12,6 +12,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Octokit.Internal;
+using System.Globalization;
 
 namespace GithubNugetDistributor
 {
@@ -212,21 +213,24 @@ namespace GithubNugetDistributor
                         Console.WriteLine(" - Compiling project ...");
 
                         //first we need to find the latest msbuild file.
-                        var frameworkDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "Microsoft.NET", "Framework" + (Environment.Is64BitOperatingSystem ? "64" : ""));
+                        var msBuildDirectory = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFilesX86), "MSBuild");
 
                         //get the latest framework version folder. all the framework folders are in the format "vX.X.X" where X.X.X is what we are looking for (the version number).
-                        var frameworkFolders = Directory.GetDirectories(frameworkDirectory, "*", SearchOption.TopDirectoryOnly)
+                        var msBuildDirectories = Directory.GetDirectories(msBuildDirectory, "*", SearchOption.TopDirectoryOnly)
                             .Select(d => new DirectoryInfo(d));
 
-                        var frameworkVersions = frameworkFolders
-                            .Where(f => f.Name.StartsWith("v"))
+                        var msBuildVersions = msBuildDirectories
+                            .Where(f =>
+                            {
+                                double number;
+                                return double.TryParse(f.Name, NumberStyles.Any, new CultureInfo("en-US"), out number);
+                            })
                             .Select(f => f.Name.Substring(1))
                             .Select(f => f.Split('.'));
 
-                        var latestFrameworkVersion = "v" + frameworkVersions
+                        var latestMsBuildVersion = msBuildVersions
                             .OrderByDescending(v => v.Length > 0 ? v[0] : "0")
                             .ThenByDescending(v => v.Length > 1 ? v[1] : "0")
-                            .ThenByDescending(v => v.Length > 2 ? v[2] : "0")
                             .First()
                             .Aggregate((a, b) => a + "." + b);
 
@@ -245,7 +249,7 @@ namespace GithubNugetDistributor
                         }
 
                         //now we know the MSBuild path of the latest version of the .net framework.
-                        var msbuildPath = Path.Combine(frameworkDirectory, latestFrameworkVersion + "", "msbuild");
+                        var msbuildPath = Path.Combine(msBuildDirectory, latestMsBuildVersion + "", "Bin", "msbuild.exe");
 
                         //and finally now use msbuild to compile.
                         RunCommandLine(msbuildPath, "\"" + file + "\" /fl /flp:logfile=\"Logs\\BuildOutput-" + packageName + ".log\";verbosity=diagnostic", false);
