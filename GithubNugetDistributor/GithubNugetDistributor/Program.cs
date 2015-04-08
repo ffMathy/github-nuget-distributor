@@ -248,7 +248,7 @@ namespace GithubNugetDistributor
                         }
 
                         //now we know the MSBuild path of the latest version of the .net framework.
-                        var msbuildPath = Path.Combine(msBuildDirectory, latestMsBuildVersion + "", "Bin", "msbuild.exe");
+                        var msbuildPath = Path.Combine(msBuildDirectory, latestMsBuildVersion + "", "Bin", "msbuild");
 
                         //and finally now use msbuild to compile.
                         RunCommandLine(msbuildPath, "\"" + file + "\" /fl /flp:logfile=\"Logs\\BuildOutput-" + packageName + ".log\";verbosity=diagnostic", false);
